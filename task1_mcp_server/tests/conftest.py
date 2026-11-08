@@ -25,10 +25,14 @@ class StdioClient:
     """
 
     def __init__(self, argv: list[str], env: dict[str, str] | None = None) -> None:
+        # Start from the caller's environment minus PYTHONUNBUFFERED, so the
+        # server runs with Python's default buffered stdout, as it does when an
+        # MCP host launches it. Tests that need unbuffered output pass it in env.
+        base_env = {k: v for k, v in os.environ.items() if k != "PYTHONUNBUFFERED"}
         self._proc = subprocess.Popen(
             argv,
             cwd=REPO_ROOT,
-            env={**os.environ, **(env or {})},
+            env={**base_env, **(env or {})},
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

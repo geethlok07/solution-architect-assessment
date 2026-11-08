@@ -14,14 +14,16 @@ Error model (MCP specification, "Error Handling"):
   model can read the message and self-correct (for example, unknown customer).
 
 Stdio discipline: stdout is the JSON-RPC wire and nothing else writes to it.
-All diagnostics go to stderr through ``logging``; ``print`` is banned by the
-linter, and the transport additionally diverts file descriptor 1 to stderr
-while serving so that stray output from third-party code cannot corrupt the
-stream.
+All diagnostics go to stderr through ``logging`` and ``print`` is banned by the
+linter. While serving, the transport points file descriptor 1 at stderr and
+``sys.stdout`` is redirected to stderr as well, so stray output from
+third-party code cannot reach the wire, whether it is written straight away
+or sits in Python's stdout buffer until the process exits.
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -264,7 +266,17 @@ async def serve() -> None:
     options = server.create_initialization_options(notification_options=NotificationOptions())
     logger.info("starting %s v%s on stdio", SERVER_NAME, SERVER_VERSION)
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(_MalformedMessageReporter(read_stream, write_stream), write_stream, options)
+        # The transport diverts file descriptor 1, but text written with
+        # print() can sit in sys.stdout's buffer and be flushed at exit, after
+        # the descriptor has been handed back. Redirecting sys.stdout for the
+        # whole session sends such writes straight to stderr instead.
+        original_stdout = sys.stdout
+        try:
+            with contextlib.redirect_stdout(sys.stderr):
+                await server.run(_MalformedMessageReporter(read_stream, write_stream), write_stream, options)
+        finally:
+            # Anything already buffered drains while fd 1 still points at stderr.
+            original_stdout.flush()
     logger.info("stdin closed, shutting down at %s", datetime.now(UTC).isoformat())
 
 

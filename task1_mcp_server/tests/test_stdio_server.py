@@ -6,6 +6,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 from .conftest import REPO_ROOT, StdioClient
 
 INVALID_PARAMS = -32602
@@ -165,8 +167,13 @@ def test_stdout_carries_only_jsonrpc_messages(server: StdioClient) -> None:
     assert "refund issued" in server.stderr
 
 
-def test_stray_print_in_tool_code_cannot_corrupt_stdout(tmp_path: Path) -> None:
-    """Simulates a careless dependency that prints from inside a tool call."""
+@pytest.mark.parametrize("unbuffered", [False, True], ids=["buffered-stdout", "unbuffered-stdout"])
+def test_stray_print_in_tool_code_cannot_corrupt_stdout(tmp_path: Path, unbuffered: bool) -> None:
+    """Simulates a careless dependency that prints from inside a tool call.
+
+    Runs with Python's default buffered stdout (the print would otherwise be
+    flushed at exit) and with PYTHONUNBUFFERED=1 (written immediately).
+    """
     noisy_entrypoint = tmp_path / "noisy_server.py"
     noisy_entrypoint.write_text(
         "import builtins\n"
@@ -178,7 +185,10 @@ def test_stray_print_in_tool_code_cannot_corrupt_stdout(tmp_path: Path) -> None:
         "store.CustomerStore.get = noisy_get\n"
         "server.main()\n"
     )
-    client = StdioClient([sys.executable, str(noisy_entrypoint)], env={"PYTHONPATH": str(REPO_ROOT)})
+    env = {"PYTHONPATH": str(REPO_ROOT)}
+    if unbuffered:
+        env["PYTHONUNBUFFERED"] = "1"
+    client = StdioClient([sys.executable, str(noisy_entrypoint)], env=env)
     try:
         client.initialize()
         response = client.call_tool("get_customer_record", {"customer_id": "CUST-10001"})

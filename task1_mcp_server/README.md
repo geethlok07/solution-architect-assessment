@@ -91,9 +91,10 @@ stdout is the JSON-RPC wire; a single stray byte breaks the client's framing. Pr
 
 1. **Logging** — the root logger has exactly one handler, bound to `sys.stderr`. The server never writes to stdout itself.
 2. **Lint** — Ruff rule `T20` fails the build on any `print` call.
-3. **Transport** — while serving, the SDK's stdio transport points file descriptor 1 at stderr and writes protocol messages through its own handle, so output from third-party code cannot reach the wire.
-4. **Single writer** — the parse-error responses added for malformed lines go through the transport's write stream rather than a second handle, so responses can never interleave.
-5. **Tests** — the end-to-end suite runs the server as a real subprocess, records every byte on stdout and asserts each line is a JSON-RPC 2.0 response. A dedicated test injects a `print()` inside a tool call and proves it lands on stderr.
+3. **Transport** — while serving, the SDK's stdio transport points file descriptor 1 at stderr and writes protocol messages through its own private handle, so output from third-party code (including C extensions) cannot reach the wire.
+4. **Python buffer** — `sys.stdout` is also redirected to stderr for the whole session, and flushed before the transport hands file descriptor 1 back. Without this, a `print()` held in Python's stdout buffer would be written to the real stdout when the process exits.
+5. **Single writer** — the parse-error responses added for malformed lines go through the transport's write stream rather than a second handle, so responses can never interleave.
+6. **Tests** — the end-to-end suite runs the server as a real subprocess, records every byte on stdout and asserts each line is a JSON-RPC 2.0 response. A dedicated test injects a `print()` inside a tool call and proves it lands on stderr, both with Python's default buffered stdout and with `PYTHONUNBUFFERED=1`.
 
 ### Other details
 

@@ -40,7 +40,7 @@ python -m pytest
 
 | Command | What it does |
 | --- | --- |
-| `make test` | Runs all 257 tests (about 30 s) |
+| `make test` | Runs all 258 tests (about 30 s) |
 | `make demo-t2` | Starts the MCP gateway and a downstream server, runs admin / viewer / no-token / malformed scenarios, prints the audit log |
 | `make demo-t4` | Starts the router and two controllable providers, walks through rate limiting, 429 failover, 3 s timeout failover, total outage and circuit breaker |
 | `make bench` | Streaming guardrail throughput, memory and added latency |
@@ -50,7 +50,7 @@ python -m pytest
 
 | Task | Built | Key evidence | Tests |
 | --- | --- | --- | --- |
-| [1 · MCP server](task1_mcp_server/README.md) | `get_customer_record`, `trigger_refund` on the official `mcp` SDK over stdio; Pydantic strict models are the single source of truth for schemas and validation | Invalid input → JSON-RPC `-32602` with per-field details; malformed lines → `-32700` / `-32600`; a subprocess test proves stdout carries only JSON-RPC, even when tool code calls `print()` | 57 |
+| [1 · MCP server](task1_mcp_server/README.md) | `get_customer_record`, `trigger_refund` on the official `mcp` SDK over stdio; Pydantic strict models are the single source of truth for schemas and validation | Invalid input → JSON-RPC `-32602` with per-field details; malformed lines → `-32700` / `-32600`; a subprocess test proves stdout carries only JSON-RPC, even when tool code calls `print()` | 58 |
 | [2 · MCP security gateway](task2_mcp_gateway/README.md) | Reverse proxy with signed-JWT roles, strict JSON-RPC parsing and deny-by-default method policy | Viewer calling `admin_reset_key` gets `-32001 Unauthorized Tool Call` and the downstream receives **zero** requests; forged, `alg: none` and expired tokens rejected; case and Unicode bypasses blocked | 54 |
 | [3 · Streaming PII guardrail](task3_llm_guardrail/README.md) | OpenAI-compatible SSE proxy redacting emails, SSNs and Luhn-valid card numbers split across chunks | Property tests: streamed output equals whole-text redaction for any chunking; ~4 ms added TTFT; ~6 KiB memory while streaming 5 MB; linear time on adversarial input | 92 |
 | [4 · Rate limiter & router](task4_model_router/README.md) | Per-tenant 50k tokens/min sliding window in on-disk SQLite; primary → secondary failover; circuit breaker; standardized errors | 100 concurrent requests → exactly 50 admitted (threads, processes and HTTP); slow primary abandoned at 3.0 s and cancelled; upstream stack traces never reach the client | 54 |
