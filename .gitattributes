@@ -1,0 +1,4 @@
+# Keep LF line endings in the repository and in checkouts on every platform,
+# so shell scripts and test fixtures behave the same on Windows, macOS and Linux.
+* text=auto eol=lf
+*.sh text eol=lf

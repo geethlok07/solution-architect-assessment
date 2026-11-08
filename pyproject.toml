@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solution-architect-assessment"
+version = "1.0.0"
+description = "MCP server, MCP security gateway, streaming PII guardrail and resilient LLM router."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp==2.3.0",
+    "pydantic>=2.13,<3",
+    "fastapi>=0.162,<1",
+    "uvicorn[standard]>=0.54,<1",
+    "httpx>=0.28,<0.29",
+    "PyJWT>=2.15,<3",
+    "anyio>=4.15,<5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1,<10",
+    "pytest-asyncio>=1.4,<2",
+    "hypothesis>=6.170,<7",
+    "ruff>=0.17,<0.18",
+    "mypy>=2.3,<3",
+]
+
+[tool.setuptools.packages.find]
+include = ["task1_mcp_server*", "task2_mcp_gateway*", "task3_llm_guardrail*", "task4_model_router*"]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "task1_mcp_server/tests",
+    "task2_mcp_gateway/tests",
+    "task3_llm_guardrail/tests",
+    "task4_model_router/tests",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "--strict-markers -ra"
+filterwarnings = ["error::RuntimeWarning"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "ASYNC", "RUF", "T20"]
+ignore = ["RUF001", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+# Benchmarks and demo scripts report to the terminal on purpose.
+"task3_llm_guardrail/bench.py" = ["T20"]
+"scripts/*.py" = ["T20"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+exclude = ["tests/"]
